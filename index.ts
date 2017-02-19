@@ -1,15 +1,22 @@
 let canvas = <HTMLCanvasElement>document.getElementById('myCanvas'),
     context = canvas.getContext("2d");
-const TILE_SIZE = 64;
+const TILE_SIZE = 64,
+      MAP_HEIGHT = 12,
+      MAP_WIDTH = 16;
 
 class Game {
     zombies: Array<Zombie>;
     player: Player;
     tileMap = new Map();
     walls: Array<Tile> = [];
+    exitTile: Tile;
+    gameIsRunning: boolean;
     constructor() {
+        this.clearGamespace();
+        this.gameIsRunning = true;
         this.generateBoundaries();
-        this.player = new Player(5, 5);
+        this.generateExitTile();
+        this.player = new Player(7, 5);
         this.zombies = this.generateZombies(2);
         this.tileMap.set(this.player.tileCode, "player");
         this.zombies.forEach((zombie) => this.tileMap.set(zombie.tileCode, "zombie"));
@@ -20,16 +27,27 @@ class Game {
         });
 
     }
+
+
+    clearGamespace(){
+      context.clearRect(0,0,TILE_SIZE*MAP_WIDTH,TILE_SIZE*MAP_HEIGHT);
+    }
+    generateExitTile(){
+      let exit = Math.floor(Math.random() * 4),
+          exitLocations = [[0,0],[0,11],[15,0],[15,11]];
+          this.exitTile = new Tile(exitLocations[exit][0],exitLocations[exit][1],"images/exit.png")
+    }
     generateBoundaries() {
         const MAP_WIDTH = 16,
             MAP_HEIGHT = 12,
             NUMBER_OF_WALLS = 4;
-        this.generateWall(MAP_WIDTH, "right", 0,-1,"images/wall.png");
-        this.generateWall(MAP_WIDTH, "right", 0,12,"images/wall.png");
-        this.generateWall(MAP_HEIGHT, "down", -1,0,"images/wall.png");
-        this.generateWall(MAP_HEIGHT, "down", 16,0,"images/wall.png");
+        this.generateWall(MAP_WIDTH, "right", 0,-1,);
+        this.generateWall(MAP_WIDTH, "right", 0,12,);
+        this.generateWall(MAP_HEIGHT, "down", -1,0,);
+        this.generateWall(MAP_HEIGHT, "down", 16,0,);
         this.generateWall(5, "right", 1,1, "images/wall.png");
-        //this.generateWall(5, "down", 3, "images/wall.png");
+        this.generateWall(5, "down", 3,3, "images/wall.png");
+        this.generateWall(5, "right", 6,9, "images/wall.png");
     }
 
     generateWall(wallLength: number, direction: string,startX: number, startY: number, image = "", exitPoint = null) {
@@ -48,7 +66,11 @@ class Game {
         }
 
     }
+    generateMaze(){
+      let randomNumber = (min,max) => {
+        return Math.floor(Math.random() * (max - min + 1) + min )};
 
+    }
     generateZombies(howMany) {
         let result = [];
         for (let i = 0; i < howMany; i++) {
@@ -104,27 +126,30 @@ class Game {
 
     control(key) {
         let direction = '';
-        switch (key) {
-            case "w":
-                direction = "up";
-                break;
-            case "a":
-                direction = "left";
-                break;
-            case "s":
-                direction = "down";
-                break;
-            case "d":
-                direction = "right";
-                break;
+        if(this.gameIsRunning){
+          switch (key) {
+              case "w":
+                  direction = "up";
+                  break;
+              case "a":
+                  direction = "left";
+                  break;
+              case "s":
+                  direction = "down";
+                  break;
+              case "d":
+                  direction = "right";
+                  break;
+          }
+          if (this.checkForCollison(direction, this.player)) {
+              console.log("collison");
+          } else {
+              this.moveAllZombies();
+              this.moveTile(this.player, direction);
+              this.checkGameState();
+          }
         }
-        if (this.checkForCollison(direction, this.player)) {
-            console.log("collison");
-        } else {
-            this.moveAllZombies();
-            this.moveTile(this.player, direction);
 
-        }
     }
 
     determineZombieMovePriority(zombie) {
@@ -175,6 +200,18 @@ class Game {
         break;
       }
     }
+    }
+    checkGameState(){
+      if (this.zombies.some((zombie)=> zombie.tileCode === this.player.tileCode)){
+        this.clearGamespace();
+        alert("You Lose!");
+        this.gameIsRunning = false;
+      }
+      if (this.player.tileCode === this.exitTile.tileCode){
+        this.clearGamespace();
+        alert("You Win!");
+        this.gameIsRunning = false;
+      }
     }
 }
 
@@ -227,3 +264,13 @@ class Zombie extends Tile {
 }
 
 let game = new Game();
+
+let gameCheck = setInterval(()=>{
+  if (!game.gameIsRunning){
+    if (prompt("Would you like to play again? y/n").toLowerCase() == "y"){
+      game = new Game();
+    }else{
+      clearInterval(gameCheck)
+    }
+  }
+}, 500);
