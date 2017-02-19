@@ -10,7 +10,7 @@ class Game {
     constructor() {
         this.generateBoundaries();
         this.player = new Player(5, 5);
-        this.zombies = this.generateZombies(1);
+        this.zombies = this.generateZombies(2);
         this.tileMap.set(this.player.tileCode, "player");
         this.zombies.forEach((zombie) => this.tileMap.set(zombie.tileCode, "zombie"));
         this.walls.forEach((wall) => this.tileMap.set(wall.tileCode, "wall"));
@@ -24,26 +24,26 @@ class Game {
         const MAP_WIDTH = 16,
             MAP_HEIGHT = 12,
             NUMBER_OF_WALLS = 4;
-        this.generateWall(MAP_WIDTH, "right", -1);
-        this.generateWall(MAP_WIDTH, "right", 12);
-        this.generateWall(MAP_HEIGHT, "down", -1);
-        this.generateWall(MAP_HEIGHT, "down", 16);
-        this.generateWall(6, "right", 10, "images/wall.png");
-        this.generateWall(6, "down", 10, "images/wall.png");
+        this.generateWall(MAP_WIDTH, "right", 0,-1,"images/wall.png");
+        this.generateWall(MAP_WIDTH, "right", 0,12,"images/wall.png");
+        this.generateWall(MAP_HEIGHT, "down", -1,0,"images/wall.png");
+        this.generateWall(MAP_HEIGHT, "down", 16,0,"images/wall.png");
+        this.generateWall(5, "right", 1,1, "images/wall.png");
+        //this.generateWall(5, "down", 3, "images/wall.png");
     }
 
-    generateWall(wallLength: number, direction: string, startPoint: number, image = "", exitPoint = null) {
+    generateWall(wallLength: number, direction: string,startX: number, startY: number, image = "", exitPoint = null) {
         //direction is either down or right
         //if image is left empty, generates and invisible tile.
 
         if (direction === "right") {
             for (let x = 0; x < wallLength; x++) {
-                this.walls.push(new Tile(x, startPoint, image));
+                this.walls.push(new Tile(x+startX, startY, image));
             }
         }
         if (direction === "down") {
             for (let i = 0; i < wallLength; i++) {
-                this.walls.push(new Tile(startPoint, i, image));
+                this.walls.push(new Tile(startX, i+startY, image));
             }
         }
 
@@ -52,7 +52,7 @@ class Game {
     generateZombies(howMany) {
         let result = [];
         for (let i = 0; i < howMany; i++) {
-            result.push(new Zombie(i, 2));
+            result.push(new Zombie(i, 3));
         }
         return result;
     }
@@ -121,29 +121,64 @@ class Game {
         if (this.checkForCollison(direction, this.player)) {
             console.log("collison");
         } else {
+            this.moveAllZombies();
             this.moveTile(this.player, direction);
-            this.moveZombie(this.zombies[0]);
+
         }
     }
 
-    moveZombie(zombie) {
-        let distanceFromPlayer = [zombie.xPos - this.player.xPos,
-            zombie.yPos - this.player.yPos]
-        if (distanceFromPlayer[0] != 0) {
-            if (distanceFromPlayer[0] < 0 && !this.checkForCollison("right", zombie)) {
-                this.moveTile(zombie, "right");
-            } else if (!this.checkForCollison("left", zombie)) {
-                this.moveTile(zombie, "left");
-            }
-        } else {
-            if (distanceFromPlayer[1] < 0 && !this.checkForCollison("down", zombie)) {
-                this.moveTile(zombie, "down");
-            } else if (!this.checkForCollison("up", zombie)) {
-                this.moveTile(zombie, "up");
-            }
+    determineZombieMovePriority(zombie) {
+        let result: Array<string> = [];
+        zombie.xDistanceToPlayer = this.player.xPos - zombie.xPos;
+        zombie.yDistanceToPlayer = this.player.yPos - zombie.yPos;
+
+        let deterimeXDirection = (inverse = false) => {
+          if (zombie.xDistanceToPlayer > 0 && !inverse){
+            return "right";
+          }else{
+            return "left";
+          }
         }
+        let deterimeYDirection = (inverse = false) => {
+          if (zombie.yDistanceToPlayer > 0 && !inverse){
+            return "down";
+          }else{
+            return "up";
+          }
+        }
+        if (Math.abs(zombie.xDistanceToPlayer) >= Math.abs(zombie.yDistanceToPlayer)) {
+            //wants to move horizontally
+            result.push(deterimeXDirection()); //Farthest
+            result.push(deterimeYDirection()); //Next best
+            result.push(deterimeYDirection(true)); //next worst
+            result.push(deterimeXDirection(true)); //last choice
+        } else {
+            //wants to move vertically
+            result.push(deterimeYDirection());
+            result.push(deterimeXDirection());
+            result.push(deterimeXDirection(true));
+            result.push(deterimeYDirection(true));
+
+
+        }
+        return result;
+    }
+
+    moveAllZombies(){
+      this.zombies.forEach((zombie) => this.moveZombie(zombie));
+    }
+    moveZombie(zombie){
+    let directions = this.determineZombieMovePriority(zombie);
+    for (let i = 0, x = directions.length; i < x; i++){
+      if (!this.checkForCollison(directions[i],zombie)){
+        this.moveTile(zombie,directions[i]);
+        break;
+      }
+    }
     }
 }
+
+
 
 class Tile {
     xPos: number;
@@ -177,14 +212,16 @@ class Tile {
 class Player extends Tile {
     type = "player";
     constructor(initalxPos, initalyPos, imagePath = "images/player.png") {
-        super(initalxPos, initalyPos, imagePath)
+        super(initalxPos, initalyPos, imagePath);
     }
 }
 
 class Zombie extends Tile {
     type = "zombie";
+    xDistanceToPlayer: number;
+    yDistanceToPlayer: number;
     constructor(initalxPos, initalyPos, imagePath = "images/zombie.png") {
-        super(initalxPos, initalyPos, imagePath)
+        super(initalxPos, initalyPos, imagePath);
     }
 
 }
