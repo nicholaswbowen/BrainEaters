@@ -36,7 +36,7 @@ class Game {
       let exit = Math.floor(Math.random() * 4),
           exitLocations = [[0,0],[0,11],[15,0],[15,11]];
           this.exitTile = new Tile(exitLocations[exit][0],exitLocations[exit][1],"images/exit.png")
-    }
+    } 
     generateBoundaries() {
         const MAP_WIDTH = 16,
             MAP_HEIGHT = 12,
